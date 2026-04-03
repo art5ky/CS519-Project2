@@ -11,10 +11,12 @@
 #include <stdbool.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 
 # define SYS_PAGE_SIZE sysconf(_SC_PAGESIZE) // Typically 4KiB page size.
 # define PAGES 16384L
 # define USE_EXTENTS true
+# define SYS_HELLO_WORLD 449
 
 // void arg_check(int argc, char *argv[]);
 double get_total_time_ms(struct timespec start, struct timespec end);
@@ -26,6 +28,12 @@ int main(int argc, char *argv[]) {
     char *u_buffer; 
 
     // arg_check(argc, argv);
+
+    // --- TRIGGER YOUR CUSTOM KERNEL SYSCALL ---
+    printf("Invoking custom kernel syscall...\n");
+    if (syscall(SYS_HELLO_WORLD) != 0) {
+        perror("Syscall failed! Did you reboot into the new kernel?");
+    }
 
     // pages = (long) atoi(argv[1]);
     buffer_size = SYS_PAGE_SIZE * PAGES;
