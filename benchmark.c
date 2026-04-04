@@ -16,7 +16,7 @@
 # define SYS_PAGE_SIZE sysconf(_SC_PAGESIZE) // Typically 4KiB page size.
 # define PAGES 16384L
 # define USE_EXTENTS true
-# define SYS_HELLO_WORLD 449
+# define SYS_HELLO_WORLD 462
 
 // void arg_check(int argc, char *argv[]);
 double get_total_time_ms(struct timespec start, struct timespec end);

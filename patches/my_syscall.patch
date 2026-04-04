@@ -1,0 +1,35 @@
+--- linux-6.8.0/arch/x86/entry/syscalls/syscall_64.tbl	2026-04-03 19:45:52.000000000 -0600
++++ linux-6.8.0-mod/arch/x86/entry/syscalls/syscall_64.tbl	2026-04-03 19:28:46.079156969 -0600
+@@ -383,6 +383,7 @@
+ 459	common	lsm_get_self_attr	sys_lsm_get_self_attr
+ 460	common	lsm_set_self_attr	sys_lsm_set_self_attr
+ 461	common	lsm_list_modules	sys_lsm_list_modules
++462	common	hello			sys_hello
+ 
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+--- linux-6.8.0/include/linux/syscalls.h	2026-04-03 19:45:52.000000000 -0600
++++ linux-6.8.0-mod/include/linux/syscalls.h	2026-04-03 19:30:39.299882604 -0600
+@@ -1300,4 +1300,7 @@
+ 		int __user *optlen);
+ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
+ 		int optlen);
++
++asmlinkage long sys_hello(void);
++
+ #endif
+--- linux-6.8.0/kernel/sys.c	2026-04-03 19:45:52.000000000 -0600
++++ linux-6.8.0-mod/kernel/sys.c	2026-04-03 20:02:39.558560374 -0600
+@@ -2894,6 +2894,12 @@
+ 	return 0;
+ }
+ 
++SYSCALL_DEFINE0(hello)
++{
++    printk(KERN_INFO "Congratulations! Your new system call is working.\n");
++    return 0;
++}
++
+ #ifdef CONFIG_COMPAT
+ struct compat_sysinfo {
+ 	s32 uptime;
