@@ -19,7 +19,7 @@ cp -a linux-5.15.0/ linux-5.15.0-orig/
 
 # Create a patch file using linux-5.15.0 and linux-5.15.0-orig
 
-diff -u linux-5.15.0-orig/ linux-5.15.0/ > patches/kernel-file.patch
+diff -u linux-5.15.0-orig/path/to/file linux-5.15.0/path/to/file > patches/file.patch
 
 # Subsequent changes, use the quick compilation script
 
