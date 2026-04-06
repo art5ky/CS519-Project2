@@ -1,9 +1,9 @@
 **/.vscode/
 build/
-linux_6.8.0-107.107.diff.gz
-linux_6.8.0-107.107.dsc
-linux_6.8.0.orig.tar.gz
-**/linux-6.8.0/
-**/linux-6.8.0-mod/
+linux_5.15.0-174.184.diff.gz
+linux_5.15.0-174.184.dsc
+linux_5.15.0.orig.tar.gz
+**/linux-5.15.0/
+**/linux-5.15.0-orig/
 .config
 REPORTING-BUGS
