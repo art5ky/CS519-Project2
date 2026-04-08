@@ -1,0 +1,22 @@
+--- linux-5.15.0-orig/mm/memory.c	2026-04-06 13:03:23.000000000 -0600
++++ linux-5.15.0/mm/memory.c	2026-04-08 15:13:59.809337016 -0600
+@@ -73,6 +73,7 @@
+ #include <linux/perf_event.h>
+ #include <linux/ptrace.h>
+ #include <linux/vmalloc.h>
++#include <linux/extent.h>
+ 
+ #include <trace/events/kmem.h>
+ 
+@@ -3790,6 +3791,11 @@
+ 	vm_fault_t ret = 0;
+ 	pte_t entry;
+ 
++	/* If enabled for current process, execute extent logic upon page fault */
++	if (current->extent_enabled) {
++		extent_init_passed();
++	}
++
+ 	/* File mapping without ->vm_ops ? */
+ 	if (vma->vm_flags & VM_SHARED)
+ 		return VM_FAULT_SIGBUS;

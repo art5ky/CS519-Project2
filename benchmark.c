@@ -28,10 +28,12 @@ int main(int argc, char *argv[]) {
     long iterations, buffer_size;
     char *u_buffer; 
 
-    // arg_check(argc, argv);
+    //arg_check(argc, argv);
 
-    if (syscall(SYS_ENABLE_EXTENT) != 0) {
-        perror("Error calling sys_enable_extent!");
+    if (USE_EXTENTS) {
+        if (syscall(SYS_ENABLE_EXTENT) != 0) {
+            perror("Error calling sys_enable_extent!");
+        }
     }
 
     // pages = (long) atoi(argv[1]);
@@ -73,28 +75,28 @@ int main(int argc, char *argv[]) {
     return 0; 
 }
 
-// void arg_check(int argc, char *argv[]) {
-//     if (argc == 1) {
-//         printf("Usage: %s [PAGES] [USE_EXTENTS]\n", argv[0]);
-//         printf("-------------------------------------------------------\n");
-//         printf("PAGES - Set # of pages for buffer size.     (1 - INT_MAX)\n");
-//         printf("USE_EXTENTS - Set boolean to use extents.   (true or false)\n");
-//         exit(1);
-//     }
+void arg_check(int argc, char *argv[]) {
+    if (argc == 1) {
+        printf("Usage: %s [PAGES] [USE_EXTENTS]\n", argv[0]);
+        printf("-------------------------------------------------------\n");
+        printf("PAGES - Set # of pages for buffer size.     (1 - INT_MAX)\n");
+        printf("USE_EXTENTS - Set boolean to use extents.   (true or false)\n");
+        exit(1);
+    }
     
-//     if (argc != 3) {
-//         printf("Insufficient parameters! (Required 3 but provided %d)\n", argc - 1);
-//         exit(1); 
-//     }
-//     if (atoi(argv[1]) < 1 || atoi(argv[1]) > INT_MAX) {
-//         printf("Incompatible PAGES! (1 - INT_MAX)\n");
-//         exit(1);
-//     }
-//     if (strcmp(argv[2], "true") != 0 && strcmp(argv[2], "false") != 0) {
-//         printf("Incompatible USE_EXTENTS! (true or false)\n");
-//         exit(1);
-//     }
-// }
+    if (argc != 3) {
+        printf("Insufficient parameters! (Required 3 but provided %d)\n", argc - 1);
+        exit(1); 
+    }
+    if (atoi(argv[1]) < 1 || atoi(argv[1]) > INT_MAX) {
+        printf("Incompatible PAGES! (1 - INT_MAX)\n");
+        exit(1);
+    }
+    if (strcmp(argv[2], "true") != 0 && strcmp(argv[2], "false") != 0) {
+        printf("Incompatible USE_EXTENTS! (true or false)\n");
+        exit(1);
+    }
+}
 
 double get_total_time_ms(struct timespec start, struct timespec end) {
     return ((end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec)) / 1e6;

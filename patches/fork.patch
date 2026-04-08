@@ -1,11 +1,12 @@
 --- linux-5.15.0-orig/kernel/fork.c	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/kernel/fork.c	2026-04-08 00:19:16.250163067 -0600
-@@ -2265,6 +2265,9 @@
++++ linux-5.15.0/kernel/fork.c	2026-04-08 15:12:23.899913811 -0600
+@@ -2265,6 +2265,10 @@
  	p->bpf_ctx = NULL;
  #endif
  
 +	// p->et = NULL; uncomment once extent_table_free() is complete and implemented in kernel/exit.c
 +	p->extent_enabled = false;
++	p->extent_init_passed = false;
 +
  	/* Perform scheduler related setup. Assign this task to a CPU. */
  	retval = sched_fork(clone_flags, p);
