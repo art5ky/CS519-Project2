@@ -1,12 +1,27 @@
 --- linux-5.15.0-orig/kernel/sys.c	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/kernel/sys.c	2026-04-06 14:29:54.089881651 -0600
-@@ -2744,3 +2744,8 @@
++++ linux-5.15.0/kernel/sys.c	2026-04-07 23:27:23.176932592 -0600
+@@ -2744,3 +2744,23 @@
  	return 0;
  }
  #endif /* CONFIG_COMPAT */
 +
-+SYSCALL_DEFINE0(hello_world) {
-+	printk(KERN_INFO "Hello World! System call worked!");
++SYSCALL_DEFINE1(enable_extent, pid_t, pid) {
++
++	struct task_struct *task;
++	struct pid *pid_struct;
++
++	pid_struct = find_get_pid(pid);
++	if (!pid_struct) return -ESRCH;
++
++	task = get_pid_task(pid_struct, PIDTYPE_PID);
++	put_pid(pid_struct);
++	if (!task) return -ESRCH;
++	
++	task->extent_enabled = true; 
++
++	printk(KERN_INFO "Extent status %d for PID: %d", (int)task->extent_enabled, pid);
++	
++	put_task_struct(task);
 +	return 0;
 +}
 \ No newline at end of file

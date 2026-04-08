@@ -16,12 +16,13 @@
 # define SYS_PAGE_SIZE sysconf(_SC_PAGESIZE) // Typically 4KiB page size.
 # define PAGES 16384L
 # define USE_EXTENTS true
-# define SYS_HELLO_WORLD 449
+# define SYS_ENABLE_EXTENT 449
 
 // void arg_check(int argc, char *argv[]);
 double get_total_time_ms(struct timespec start, struct timespec end);
 
 int main(int argc, char *argv[]) {
+    pid_t pid = getpid();
     struct timespec t_start, t_end;
     struct rusage u_start, u_end; 
     long iterations, buffer_size;
@@ -29,15 +30,14 @@ int main(int argc, char *argv[]) {
 
     // arg_check(argc, argv);
 
-    // --- TRIGGER YOUR CUSTOM KERNEL SYSCALL ---
-    printf("Invoking custom kernel syscall...\n");
-    if (syscall(SYS_HELLO_WORLD) != 0) {
-        perror("Syscall failed! Did you reboot into the new kernel?");
+    if (syscall(SYS_ENABLE_EXTENT, pid) != 0) {
+        perror("Error calling sys_enable_extent!");
     }
 
     // pages = (long) atoi(argv[1]);
     buffer_size = SYS_PAGE_SIZE * PAGES;
 
+    printf("PID: %d\n", pid);
     printf("Total Pages: %ld\n", PAGES);
     printf("System Page Size (B): %ld\n", SYS_PAGE_SIZE);
     printf("Total Buffer Size (B): %ld\n", buffer_size);
