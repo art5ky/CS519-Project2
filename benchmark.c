@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 
     // arg_check(argc, argv);
 
-    if (syscall(SYS_ENABLE_EXTENT, pid) != 0) {
+    if (syscall(SYS_ENABLE_EXTENT) != 0) {
         perror("Error calling sys_enable_extent!");
     }
 

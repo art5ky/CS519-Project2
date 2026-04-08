@@ -1,10 +1,10 @@
 --- linux-5.15.0-orig/include/linux/syscalls.h	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/include/linux/syscalls.h	2026-04-07 23:37:49.890704903 -0600
++++ linux-5.15.0/include/linux/syscalls.h	2026-04-08 01:18:44.888065097 -0600
 @@ -1388,4 +1388,7 @@
  		int __user *optlen);
  int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
  		int optlen);
 +
-+asmlinkage long sys_enable_extent(pid_t pid);
++asmlinkage long sys_enable_extent(void);
 +
  #endif
