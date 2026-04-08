@@ -1,0 +1,10 @@
+--- linux-5.15.0-orig/mm/Makefile	2026-04-06 13:03:23.000000000 -0600
++++ linux-5.15.0/mm/Makefile	2026-04-08 16:21:45.204972657 -0600
+@@ -61,6 +61,7 @@
+ # Give 'memory_hotplug' its own module-parameter namespace
+ memory-hotplug-$(CONFIG_MEMORY_HOTPLUG) += memory_hotplug.o
+ 
++obj-y += extent.o
+ obj-y += page-alloc.o
+ obj-y += init-mm.o
+ obj-y += memblock.o
