@@ -1,14 +1,6 @@
 --- linux-5.15.0-orig/include/linux/sched.h	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/include/linux/sched.h	2026-04-08 00:19:21.482246151 -0600
-@@ -35,6 +35,7 @@
- #include <linux/seqlock.h>
- #include <linux/kcsan.h>
- #include <asm/kmap_size.h>
-+#include <linux/extent.h>
- 
- /* task_struct member predeclarations (sorted alphabetically): */
- struct audit_context;
-@@ -67,6 +68,7 @@
++++ linux-5.15.0/include/linux/sched.h	2026-04-08 01:27:21.253051345 -0600
+@@ -67,6 +67,7 @@
  struct signal_struct;
  struct task_delay_info;
  struct task_group;
@@ -16,7 +8,7 @@
  
  /*
   * Task state bitmask. NOTE! These bits are also
-@@ -1483,6 +1485,9 @@
+@@ -1483,6 +1484,9 @@
  	struct callback_head		l1d_flush_kill;
  #endif
  
