@@ -44,7 +44,7 @@ void extent_table_free(struct extent_table *et)
         return;
     }
     node = rb_first(&et->root); // Eliminate in the order of going to the
-                                // leftmost node int he tree.
+                                // leftmost node in the tree.
     while (node)
     {
         struct extent *ext = rb_entry(node, struct extent, node);
@@ -142,6 +142,7 @@ int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
 
     switch (insert_case) 
     {
+    // Case 1: Bridging two previously separate extents
     case EXTENT_BRIDGE:
         list_add_tail(&page->node, &prev->list);
         list_splice_tail_init(&next->list, &prev->list);
@@ -156,6 +157,7 @@ int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
         spin_unlock(&et->lock);
         return 0;
 
+    // Case 2: Extending an extent forward 
     case EXTENT_EXTEND_PREV:
         list_add_tail(&page->node, &prev->list);
         prev->paddr_end = phys;
@@ -163,6 +165,7 @@ int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
         spin_unlock(&et->lock);
         return 0;
 
+    // Case 3: Extending an extent backward
     case EXTENT_EXTEND_NEXT:
         rb_erase(&next->node, &et->root);
 
@@ -187,7 +190,10 @@ int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
         rb_insert_color(&next->node, &et->root);
         spin_unlock(&et->lock);
         return 0;
-
+    
+    // Case 4: Proceed to outside the switch case since this case
+    // requires significantly more overhead than the others.
+    // Separated so as to not burden the other 3 cases with unnecessary overhead.
     case EXTENT_NEW:
         break;
 
@@ -228,9 +234,8 @@ int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
     The following is just a repeat of the initial steps
     and also checking for cases 1-3. This is because
     adding a new extent from case 4 could possibly change things
-    so the process needs to be repeated again
-    to get the most up to date extent cound
-    and RB tree structure. 
+    so the process needs to be repeated again to get 
+    the most up to date extent count and RB tree structure. 
     */
 
     while (*link) 
@@ -353,9 +358,9 @@ void extent_table_check_create(struct task_struct *task)
     }
 
     /* 
-    * Try to assign the new extent table to task->et only if it is still NULL.
-    * If task->et is already set (another thread got there first), then do not
-    * overwrite it and free this newly created table to avoid a memory leak.
+    Try to assign the new extent table to task->et only if it is still NULL.
+    If task->et is already set (another thread got there first), then do not
+    overwrite it and free this newly created table to avoid a memory leak.
     */
     if (cmpxchg(&task->et, NULL, et) != NULL) 
         extent_table_free(et);

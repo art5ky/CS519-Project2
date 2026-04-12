@@ -1,6 +1,8 @@
---- linux-5.15.0-orig/kernel/sys.c	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/kernel/sys.c	2026-04-08 14:34:56.937234767 -0600
-@@ -2744,3 +2744,9 @@
+diff --git a/kernel/sys.c b/kernel/sys.c
+index afd01b763..be14a4835 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -2744,3 +2744,9 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
  	return 0;
  }
  #endif /* CONFIG_COMPAT */

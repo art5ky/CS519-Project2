@@ -1,0 +1,29 @@
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 888a63f07..b335a02c2 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -69,6 +69,7 @@
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+ #include <asm/mmu_context.h>
++#include <linux/extent.h>
+ 
+ /*
+  * The default value should be high enough to not crash a system that randomly
+@@ -869,6 +870,16 @@ void __noreturn do_exit(long code)
+ 
+ 	exit_mm();
+ 
++	// Patched section
++	/*
++	After exiting, print the stats of the extent table then free it
++	 */
++	if (current->et) {
++        extent_table_print_stats(current->et, current->pid);
++        extent_table_free(current->et);
++        current->et = NULL;
++    }
++
+ 	if (group_dead)
+ 		acct_process();
+ 	trace_sched_process_exit(tsk);

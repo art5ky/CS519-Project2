@@ -22,11 +22,4 @@ sudo make -j$PROC
 sudo make modules_install
 sudo make install
 
-y="5.15.168"
-
-sudo cp ./arch/x86/boot/bzImage /boot/vmlinuz-$y
-sudo cp System.map /boot/System.map-$y
-sudo cp .config /boot/config-$y
-sudo update-initramfs -c -k $y
-
 sudo update-grub

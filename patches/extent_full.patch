@@ -1,0 +1,585 @@
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 18b5500ea..1df4e4c81 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -370,6 +370,7 @@
+ 446	common	landlock_restrict_self	sys_landlock_restrict_self
+ 447	common	memfd_secret		sys_memfd_secret
+ 448	common	process_mrelease	sys_process_mrelease
++449	common	enable_extent		sys_enable_extent
+ 
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+diff --git a/include/linux/extent.h b/include/linux/extent.h
+new file mode 100644
+index 000000000..7e9ef67b7
+--- /dev/null
++++ b/include/linux/extent.h
+@@ -0,0 +1,41 @@
++// This file is located in linux-5.15.0/include/linux/extent.h
++
++#ifndef _LINUX_EXTENT_H
++#define _LINUX_EXTENT_H
++
++#include <linux/types.h>
++#include <linux/list.h>
++#include <linux/rbtree.h>
++#include <linux/spinlock.h>
++
++struct task_struct; // Forward declaration
++
++struct extent_page {
++    phys_addr_t paddr;
++    struct list_head node; 
++};
++
++struct extent {
++    phys_addr_t paddr_start; 
++    phys_addr_t paddr_end; 
++    unsigned long id; 
++    unsigned long num_pages; 
++    struct list_head list;
++    struct rb_node node; 
++};
++
++struct extent_table {
++    struct rb_root root; 
++    spinlock_t lock; 
++    unsigned long next_id; 
++    unsigned long total_extents;
++};
++
++struct extent_table *extent_table_alloc(void);
++void extent_table_free(struct extent_table *et);
++int  extent_table_insert_page(struct extent_table *et, phys_addr_t phys);
++void extent_table_print_stats(struct extent_table *et, pid_t pid);
++void extent_init_passed(void);
++void extent_table_check_create(struct task_struct *task);
++
++#endif
+\ No newline at end of file
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index cbf69d0d6..c15b8f4c4 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -67,6 +67,7 @@ struct sighand_struct;
+ struct signal_struct;
+ struct task_delay_info;
+ struct task_group;
++struct extent_table;
+ 
+ /*
+  * Task state bitmask. NOTE! These bits are also
+@@ -1483,6 +1484,10 @@ struct task_struct {
+ 	struct callback_head		l1d_flush_kill;
+ #endif
+ 
++	struct extent_table *et; //uncomment once extent_table_free() is complete and implemented in kernel/exit.c
++	bool extent_enabled;
++	bool extent_init_passed;
++
+ 	/*
+ 	 * New fields for task_struct should be added above here, so that
+ 	 * they are included in the randomized portion of task_struct.
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index b8037a46f..642e6fffa 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1388,4 +1388,7 @@ int __sys_getsockopt(int fd, int level, int optname, char __user *optval,
+ 		int __user *optlen);
+ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
+ 		int optlen);
++
++asmlinkage long sys_enable_extent(void);
++
+ #endif
+diff --git a/init/init_task.c b/init/init_task.c
+index 2d024066e..9b27f1912 100644
+--- a/init/init_task.c
++++ b/init/init_task.c
+@@ -214,6 +214,9 @@ struct task_struct init_task
+ #ifdef CONFIG_SECCOMP_FILTER
+ 	.seccomp	= { .filter_count = ATOMIC_INIT(0) },
+ #endif
++	.et = NULL, //uncomment once extent_table_free() is complete and implemented in kernel/exit.c
++	.extent_enabled = false,
++	.extent_init_passed = false, 
+ };
+ EXPORT_SYMBOL(init_task);
+ 
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 888a63f07..b335a02c2 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -69,6 +69,7 @@
+ #include <linux/uaccess.h>
+ #include <asm/unistd.h>
+ #include <asm/mmu_context.h>
++#include <linux/extent.h>
+ 
+ /*
+  * The default value should be high enough to not crash a system that randomly
+@@ -869,6 +870,16 @@ void __noreturn do_exit(long code)
+ 
+ 	exit_mm();
+ 
++	// Patched section
++	/*
++	After exiting, print the stats of the extent table then free it
++	 */
++	if (current->et) {
++        extent_table_print_stats(current->et, current->pid);
++        extent_table_free(current->et);
++        current->et = NULL;
++    }
++
+ 	if (group_dead)
+ 		acct_process();
+ 	trace_sched_process_exit(tsk);
+diff --git a/kernel/fork.c b/kernel/fork.c
+index 442e4562f..bb7b1abb0 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -2265,6 +2265,10 @@ static __latent_entropy struct task_struct *copy_process(
+ 	p->bpf_ctx = NULL;
+ #endif
+ 
++	p->et = NULL; //uncomment once extent_table_free() is complete and implemented in kernel/exit.c
++	p->extent_enabled = false;
++	p->extent_init_passed = false;
++
+ 	/* Perform scheduler related setup. Assign this task to a CPU. */
+ 	retval = sched_fork(clone_flags, p);
+ 	if (retval)
+diff --git a/kernel/sys.c b/kernel/sys.c
+index afd01b763..be14a4835 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -2744,3 +2744,9 @@ COMPAT_SYSCALL_DEFINE1(sysinfo, struct compat_sysinfo __user *, info)
+ 	return 0;
+ }
+ #endif /* CONFIG_COMPAT */
++
++SYSCALL_DEFINE0(enable_extent) {
++	current->extent_enabled = true; 
++	printk(KERN_INFO "Extent Status: %d | PID: %d (%s)\n", (int)current->extent_enabled, current->pid, current->comm);
++	return 0;
++}
+\ No newline at end of file
+diff --git a/mm/Makefile b/mm/Makefile
+index c715b0138..4e6babd99 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -61,6 +61,7 @@ page-alloc-$(CONFIG_SHUFFLE_PAGE_ALLOCATOR) += shuffle.o
+ # Give 'memory_hotplug' its own module-parameter namespace
+ memory-hotplug-$(CONFIG_MEMORY_HOTPLUG) += memory_hotplug.o
+ 
++obj-y += extent.o
+ obj-y += page-alloc.o
+ obj-y += init-mm.o
+ obj-y += memblock.o
+diff --git a/mm/extent.c b/mm/extent.c
+new file mode 100644
+index 000000000..ef129e004
+--- /dev/null
++++ b/mm/extent.c
+@@ -0,0 +1,367 @@
++// This file is located in linux-5.15.0/mm/extent.c
++
++#include <linux/extent.h>
++#include <linux/printk.h>
++#include <linux/sched.h>
++#include <linux/slab.h>
++#include <linux/errno.h>
++
++void extent_init_passed(void) {
++    if (!current->extent_init_passed) {
++        printk(KERN_INFO "Extent Initial Page Fault: Passed | PID: %d (%s)!\n", current->pid, current->comm);
++        current->extent_init_passed = true; 
++    }
++}
++
++// Function to allocate an extent table when called
++struct extent_table *extent_table_alloc(void)
++{
++    struct extent_table *et;
++
++    et = kmalloc(sizeof(*et), GFP_KERNEL);
++    if (!et)
++    {
++        printk(KERN_ERR "Extent Table was not able to be allocated\n");
++        return NULL;
++    }
++
++    et->root = RB_ROOT; // Initialize the RB tree with an empty value
++    spin_lock_init(&et->lock); // Initialize table spinlock
++    et->next_id = 0; // Next Extent ID to be assigned
++    et->total_extents = 0; // Counter for current number of extents in table
++
++    return et;
++}
++
++// Function to free an extent table
++void extent_table_free(struct extent_table *et)
++{
++    struct rb_node *node;
++
++    if (!et)
++    {
++        //printk(KERN_ERR "Invalid table to free\n");
++        return;
++    }
++    node = rb_first(&et->root); // Eliminate in the order of going to the
++                                // leftmost node in the tree.
++    while (node)
++    {
++        struct extent *ext = rb_entry(node, struct extent, node);
++        struct rb_node *next = rb_next(node);
++        struct extent_page *page, *tmp;
++
++        list_for_each_entry_safe(page, tmp, &ext->list, node)
++        {
++            list_del(&page->node);
++            kfree(page);
++        }
++
++        rb_erase(&ext->node, &et->root);
++        kfree(ext);
++
++        node = next;
++    }
++    kfree(et);
++}
++
++int extent_table_insert_page(struct extent_table *et, phys_addr_t phys)
++{
++    struct extent *curr;
++    struct extent *prev = NULL, *next = NULL;
++    struct extent *new_ext;
++    struct extent_page *page;
++    struct rb_node **link, *parent = NULL;
++    int insert_case;
++
++    // Switch case variables for use later in dealing with extents
++    enum 
++    {
++        EXTENT_BRIDGE = 1,
++        EXTENT_EXTEND_PREV = 2,
++        EXTENT_EXTEND_NEXT = 3,
++        EXTENT_NEW = 4
++    };
++    
++    if (!et)
++        return -EINVAL;
++
++    page = kmalloc(sizeof(*page), GFP_KERNEL); // Allocate page node
++    if (!page)
++        return -ENOMEM;
++
++    page->paddr = phys;
++    INIT_LIST_HEAD(&page->node);
++
++    spin_lock(&et->lock); // Set spinlock while setting table elements
++
++    // Traverse the RB tree to find the correct position and track
++    // previous and next candidate extents
++    link = &et->root.rb_node;
++    while(*link)
++    {
++        curr = rb_entry(*link, struct extent, node);
++        parent = *link;
++        if(phys < curr->paddr_start)
++        {
++            next = curr;
++            link = &(*link)->rb_left;
++        }
++        else 
++        {
++            prev = curr;
++            link = &(*link)->rb_right;
++        }
++    }
++
++    /*
++    Handling 4 cases for extents.
++    1. Bridging two previously separate extents 
++    2. Extending an extent forward
++    3. Extending an extent backward
++    4. Creating a new extent
++    */
++
++    if (prev && phys == prev->paddr_end + PAGE_SIZE &&
++        next && phys + PAGE_SIZE == next->paddr_start) 
++    {
++        insert_case = EXTENT_BRIDGE;
++    } 
++    else if (prev && phys == prev->paddr_end + PAGE_SIZE) 
++    {
++        insert_case = EXTENT_EXTEND_PREV;
++    } 
++    else if (next && phys + PAGE_SIZE == next->paddr_start) 
++    {
++        insert_case = EXTENT_EXTEND_NEXT;
++    } 
++    else 
++    {
++        insert_case = EXTENT_NEW;
++    }
++
++    switch (insert_case) 
++    {
++    // Case 1: Bridging two previously separate extents
++    case EXTENT_BRIDGE:
++        list_add_tail(&page->node, &prev->list);
++        list_splice_tail_init(&next->list, &prev->list);
++
++        prev->paddr_end = next->paddr_end;
++        prev->num_pages += 1 + next->num_pages;
++
++        rb_erase(&next->node, &et->root);
++        kfree(next);
++        et->total_extents--;
++
++        spin_unlock(&et->lock);
++        return 0;
++
++    // Case 2: Extending an extent forward 
++    case EXTENT_EXTEND_PREV:
++        list_add_tail(&page->node, &prev->list);
++        prev->paddr_end = phys;
++        prev->num_pages++;
++        spin_unlock(&et->lock);
++        return 0;
++
++    // Case 3: Extending an extent backward
++    case EXTENT_EXTEND_NEXT:
++        rb_erase(&next->node, &et->root);
++
++        next->paddr_start = phys;
++        next->num_pages++;
++        list_add(&page->node, &next->list);
++
++        parent = NULL;
++        link = &et->root.rb_node;
++        while (*link) 
++        {
++            curr = rb_entry(*link, struct extent, node);
++            parent = *link;
++
++            if (next->paddr_start < curr->paddr_start)
++                link = &(*link)->rb_left;
++            else
++                link = &(*link)->rb_right;
++        }
++
++        rb_link_node(&next->node, parent, link);
++        rb_insert_color(&next->node, &et->root);
++        spin_unlock(&et->lock);
++        return 0;
++    
++    // Case 4: Proceed to outside the switch case since this case
++    // requires significantly more overhead than the others.
++    // Separated so as to not burden the other 3 cases with unnecessary overhead.
++    case EXTENT_NEW:
++        break;
++
++    default:
++        spin_unlock(&et->lock);
++        kfree(page);
++        return -EINVAL;
++    }
++
++    // For the following case where it isn't contiguous, 
++    // spinlock must be unlocked before calling kmalloc. 
++    spin_unlock(&et->lock);
++
++    // Case 4: If not contiguous, create a new extent
++    new_ext = kmalloc(sizeof(*new_ext), GFP_KERNEL);
++    if (!new_ext) 
++    {
++        kfree(page);
++        return -ENOMEM;
++    }
++
++    new_ext->paddr_start = phys;
++    new_ext->paddr_end = phys;
++    new_ext->num_pages = 1;
++    INIT_LIST_HEAD(&new_ext->list);
++    list_add_tail(&page->node, &new_ext->list);
++
++    spin_lock(&et->lock);
++
++    new_ext->id = et->next_id++;
++
++    prev = NULL;
++    next = NULL;
++    parent = NULL;
++    link = &et->root.rb_node;
++
++    /*
++    The following is just a repeat of the initial steps
++    and also checking for cases 1-3. This is because
++    adding a new extent from case 4 could possibly change things
++    so the process needs to be repeated again to get 
++    the most up to date extent count and RB tree structure. 
++    */
++
++    while (*link) 
++    {
++        curr = rb_entry(*link, struct extent, node);
++        parent = *link;
++
++        if (phys < curr->paddr_start) {
++            next = curr;
++            link = &(*link)->rb_left;
++        } else {
++            prev = curr;
++            link = &(*link)->rb_right;
++        }
++    }
++
++    if (prev && phys == prev->paddr_end + PAGE_SIZE &&
++        next && phys + PAGE_SIZE == next->paddr_start) 
++    {
++        insert_case = EXTENT_BRIDGE;
++    } 
++    else if (prev && phys == prev->paddr_end + PAGE_SIZE) 
++    {
++        insert_case = EXTENT_EXTEND_PREV;
++    } 
++    else if (next && phys + PAGE_SIZE == next->paddr_start) 
++    {
++        insert_case = EXTENT_EXTEND_NEXT;
++    } 
++    else 
++    {
++        insert_case = EXTENT_NEW;
++    }
++
++    switch (insert_case) 
++    {
++    case EXTENT_EXTEND_PREV:
++        list_add_tail(&page->node, &prev->list);
++        prev->paddr_end = phys;
++        prev->num_pages++;
++        spin_unlock(&et->lock);
++        kfree(new_ext);
++        return 0;
++
++    case EXTENT_EXTEND_NEXT:
++        rb_erase(&next->node, &et->root);
++
++        next->paddr_start = phys;
++        next->num_pages++;
++        list_add(&page->node, &next->list);
++
++        parent = NULL;
++        link = &et->root.rb_node;
++        while (*link) {
++            curr = rb_entry(*link, struct extent, node);
++            parent = *link;
++
++            if (next->paddr_start < curr->paddr_start)
++                link = &(*link)->rb_left;
++            else
++                link = &(*link)->rb_right;
++        }
++
++        rb_link_node(&next->node, parent, link);
++        rb_insert_color(&next->node, &et->root);
++
++        spin_unlock(&et->lock);
++        kfree(new_ext);
++        return 0;
++
++    case EXTENT_BRIDGE:
++        list_add_tail(&page->node, &prev->list);
++        list_splice_tail_init(&next->list, &prev->list);
++
++        prev->paddr_end = next->paddr_end;
++        prev->num_pages += 1 + next->num_pages;
++
++        rb_erase(&next->node, &et->root);
++        kfree(next);
++        et->total_extents--;
++
++        spin_unlock(&et->lock);
++        kfree(new_ext);
++        return 0;
++
++    case EXTENT_NEW:
++        rb_link_node(&new_ext->node, parent, link);
++        rb_insert_color(&new_ext->node, &et->root);
++        et->total_extents++;
++        spin_unlock(&et->lock);
++        return 0;
++
++    default:
++        spin_unlock(&et->lock);
++        kfree(new_ext);
++        return -EINVAL;
++    }
++
++}
++
++void extent_table_print_stats(struct extent_table *et, pid_t pid)
++{
++    if (!et)
++        return;
++
++    printk(KERN_INFO "PID %d Total Extents: %lu\n", pid, et->total_extents);
++}
++
++void extent_table_check_create(struct task_struct *task)
++{
++    struct extent_table *et;
++    if (likely(task->et))
++        return;
++
++    et = extent_table_alloc();
++    if (!et)
++    {
++        printk(KERN_ERR "Failed to allocate extent table for pid=%d\n", task->pid);
++        return;
++    }
++
++    /* 
++    Try to assign the new extent table to task->et only if it is still NULL.
++    If task->et is already set (another thread got there first), then do not
++    overwrite it and free this newly created table to avoid a memory leak.
++    */
++    if (cmpxchg(&task->et, NULL, et) != NULL) 
++        extent_table_free(et);
++}
+\ No newline at end of file
+diff --git a/mm/memory.c b/mm/memory.c
+index 1a6786c1f..01308e7c7 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -73,6 +73,7 @@
+ #include <linux/perf_event.h>
+ #include <linux/ptrace.h>
+ #include <linux/vmalloc.h>
++#include <linux/extent.h>
+ 
+ #include <trace/events/kmem.h>
+ 
+@@ -3874,6 +3875,18 @@ static vm_fault_t do_anonymous_page(struct vm_fault *vmf)
+ 		return handle_userfault(vmf, VM_UFFD_MISSING);
+ 	}
+ 
++	// Patched and moved from above
++	/* If enabled for current process, record the newly faulted anonymous page */
++	if (current->extent_enabled) {
++		phys_addr_t phys = page_to_phys(page);
++
++		extent_init_passed();
++		extent_table_check_create(current);
++
++		if (current->et)
++			extent_table_insert_page(current->et, phys);
++	}
++
+ 	inc_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
+ 	page_add_new_anon_rmap(page, vma, vmf->address, false);
+ 	lru_cache_add_inactive_or_unevictable(page, vma);

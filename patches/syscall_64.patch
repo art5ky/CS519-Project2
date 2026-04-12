@@ -1,5 +1,7 @@
---- linux-5.15.0-orig/arch/x86/entry/syscalls/syscall_64.tbl	2021-10-31 14:53:10.000000000 -0600
-+++ linux-5.15.0/arch/x86/entry/syscalls/syscall_64.tbl	2026-04-08 00:48:54.974611750 -0600
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 18b5500ea..1df4e4c81 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
 @@ -370,6 +370,7 @@
  446	common	landlock_restrict_self	sys_landlock_restrict_self
  447	common	memfd_secret		sys_memfd_secret

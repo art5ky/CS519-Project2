@@ -1,6 +1,8 @@
---- linux-5.15.0-orig/include/linux/syscalls.h	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/include/linux/syscalls.h	2026-04-08 01:18:44.888065097 -0600
-@@ -1388,4 +1388,7 @@
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index b8037a46f..642e6fffa 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1388,4 +1388,7 @@ int __sys_getsockopt(int fd, int level, int optname, char __user *optval,
  		int __user *optlen);
  int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
  		int optlen);
