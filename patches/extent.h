@@ -8,6 +8,8 @@
 #include <linux/rbtree.h>
 #include <linux/spinlock.h>
 
+struct task_struct; // Forward declaration
+
 struct extent_page {
     phys_addr_t paddr;
     struct list_head node; 
@@ -34,5 +36,6 @@ void extent_table_free(struct extent_table *et);
 int  extent_table_insert_page(struct extent_table *et, phys_addr_t phys);
 void extent_table_print_stats(struct extent_table *et, pid_t pid);
 void extent_init_passed(void);
+void extent_table_check_create(struct task_struct *task);
 
 #endif
