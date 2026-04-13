@@ -15,10 +15,9 @@
 
 # define SYS_PAGE_SIZE sysconf(_SC_PAGESIZE) // Typically 4KiB page size.
 # define PAGES 16384L
-# define USE_EXTENTS true
 # define SYS_ENABLE_EXTENT 449
 
-// void arg_check(int argc, char *argv[]);
+void arg_check(int argc, char *argv[]);
 double get_total_time_ms(struct timespec start, struct timespec end);
 
 int main(int argc, char *argv[]) {
@@ -28,15 +27,14 @@ int main(int argc, char *argv[]) {
     long iterations, buffer_size;
     char *u_buffer; 
 
-    //arg_check(argc, argv);
+    arg_check(argc, argv);
 
-    if (USE_EXTENTS) {
+    if (strcmp(argv[1], "true") == 0) {
         if (syscall(SYS_ENABLE_EXTENT) != 0) {
             perror("Error calling sys_enable_extent!");
         }
     }
 
-    // pages = (long) atoi(argv[1]);
     buffer_size = SYS_PAGE_SIZE * PAGES;
 
     printf("PID: %d\n", pid);
@@ -77,22 +75,16 @@ int main(int argc, char *argv[]) {
 
 void arg_check(int argc, char *argv[]) {
     if (argc == 1) {
-        printf("Usage: %s [PAGES] [USE_EXTENTS]\n", argv[0]);
+        printf("Usage: %s [USE_EXTENTS]\n", argv[0]);
         printf("-------------------------------------------------------\n");
-        printf("PAGES - Set # of pages for buffer size.     (1 - INT_MAX)\n");
         printf("USE_EXTENTS - Set boolean to use extents.   (true or false)\n");
         exit(1);
     }
-    
-    if (argc != 3) {
-        printf("Insufficient parameters! (Required 3 but provided %d)\n", argc - 1);
+    if (argc != 2) {
+        printf("Insufficient parameters! (Required 2 but provided %d)\n", argc - 1);
         exit(1); 
     }
-    if (atoi(argv[1]) < 1 || atoi(argv[1]) > INT_MAX) {
-        printf("Incompatible PAGES! (1 - INT_MAX)\n");
-        exit(1);
-    }
-    if (strcmp(argv[2], "true") != 0 && strcmp(argv[2], "false") != 0) {
+    if (strcmp(argv[1], "true") != 0 && strcmp(argv[1], "false") != 0) {
         printf("Incompatible USE_EXTENTS! (true or false)\n");
         exit(1);
     }

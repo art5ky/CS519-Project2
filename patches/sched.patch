@@ -1,5 +1,5 @@
 --- linux-5.15.0-orig/include/linux/sched.h	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/include/linux/sched.h	2026-04-08 15:13:05.804534853 -0600
++++ linux-5.15.0/include/linux/sched.h	2026-04-12 17:01:51.597433388 -0600
 @@ -67,6 +67,7 @@
  struct signal_struct;
  struct task_delay_info;
@@ -12,7 +12,7 @@
  	struct callback_head		l1d_flush_kill;
  #endif
  
-+	// struct extent_table *et; uncomment once extent_table_free() is complete and implemented in kernel/exit.c
++	struct extent_table *et;
 +	bool extent_enabled;
 +	bool extent_init_passed;
 +

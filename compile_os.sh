@@ -1,37 +1,31 @@
 #!/bin/bash -x
-sudo apt update; sudo apt-get install -y libncurses-dev bison flex
+set -euo pipefail
 
-PROC=`nproc`
+sudo apt update
+sudo apt-get install -y libncurses-dev bison flex
+
+PROC=$(nproc)
 export CONCURRENCY_LEVEL=$PROC
 export CONCURRENCYLEVEL=$PROC
 
-cd linux-5.15.0/
+cd ~/linux-5.15.0
 
 cp /boot/config-$(uname -r) .config
-#make menuconfig
 make oldconfig
 
-scripts/config --disable SYSTEM_TRUSTED_KEYS
-scripts/config --disable SYSTEM_REVOCATION_KEYS
-
-scripts/config --disable SYSTEM_TRUSTED_KEYS
-scripts/config --disable SYSTEM_REVOCATION_KEYS
-
-make menuconfig
+scripts/config --set-str SYSTEM_TRUSTED_KEYS ""
+scripts/config --set-str SYSTEM_REVOCATION_KEYS ""
 
 touch REPORTING-BUGS
-sudo make clean -j
-sudo make prepare
-sudo make -j$PROC
-sudo make modules -j$PROC
+
+make clean
+make prepare
+make -j"$PROC"
+make modules -j"$PROC"
+
+# Sanity check: only continue if key build artifacts exist
+ls -l vmlinux System.map arch/x86/boot/bzImage
+
 sudo make modules_install
 sudo make install
-
-y="5.15.168"
-
-sudo cp ./arch/x86/boot/bzImage /boot/vmlinuz-$y
-sudo cp System.map /boot/System.map-$y
-sudo cp .config /boot/config-$y
-sudo update-initramfs -c -k $y
-
 sudo update-grub

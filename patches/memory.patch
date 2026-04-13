@@ -1,5 +1,5 @@
 --- linux-5.15.0-orig/mm/memory.c	2026-04-06 13:03:23.000000000 -0600
-+++ linux-5.15.0/mm/memory.c	2026-04-08 15:13:59.809337016 -0600
++++ linux-5.15.0/mm/memory.c	2026-04-12 16:59:11.186826685 -0600
 @@ -73,6 +73,7 @@
  #include <linux/perf_event.h>
  #include <linux/ptrace.h>
@@ -8,15 +8,22 @@
  
  #include <trace/events/kmem.h>
  
-@@ -3790,6 +3791,11 @@
- 	vm_fault_t ret = 0;
- 	pte_t entry;
+@@ -3874,6 +3875,18 @@
+ 		return handle_userfault(vmf, VM_UFFD_MISSING);
+ 	}
  
-+	/* If enabled for current process, execute extent logic upon page fault */
++	// Patched and moved from above
++	/* If enabled for current process, record the newly faulted anonymous page */
 +	if (current->extent_enabled) {
++		phys_addr_t phys = page_to_phys(page);
++
 +		extent_init_passed();
++		extent_table_check_create(current);
++
++		if (current->et)
++			extent_table_insert_page(current->et, phys);
 +	}
 +
- 	/* File mapping without ->vm_ops ? */
- 	if (vma->vm_flags & VM_SHARED)
- 		return VM_FAULT_SIGBUS;
+ 	inc_mm_counter_fast(vma->vm_mm, MM_ANONPAGES);
+ 	page_add_new_anon_rmap(page, vma, vmf->address, false);
+ 	lru_cache_add_inactive_or_unevictable(page, vma);

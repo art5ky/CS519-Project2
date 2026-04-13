@@ -1,10 +1,10 @@
 --- linux-5.15.0-orig/init/init_task.c	2021-10-31 14:53:10.000000000 -0600
-+++ linux-5.15.0/init/init_task.c	2026-04-08 15:12:11.315727535 -0600
++++ linux-5.15.0/init/init_task.c	2026-04-12 17:01:57.785533944 -0600
 @@ -214,6 +214,9 @@
  #ifdef CONFIG_SECCOMP_FILTER
  	.seccomp	= { .filter_count = ATOMIC_INIT(0) },
  #endif
-+	//.et = NULL, uncomment once extent_table_free() is complete and implemented in kernel/exit.c
++	.et = NULL,
 +	.extent_enabled = false,
 +	.extent_init_passed = false, 
  };
