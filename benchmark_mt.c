@@ -17,13 +17,14 @@
 #define SYS_PAGE_SIZE sysconf(_SC_PAGESIZE) 
 #define PAGES 16384L
 #define SYS_ENABLE_EXTENT 449
-#define NUM_THREADS 1
+#define NUM_THREADS sysconf(_SC_NPROCESSORS_CONF) // configured number logical processors on system
 
 // Structure to pass data to each thread
 typedef struct {
     char *buffer;
     size_t start_offset;
     size_t end_offset;
+    bool use_extents;
 } thread_data_t;
 
 void arg_check(int argc, char *argv[]);
@@ -32,6 +33,12 @@ double get_total_time_ms(struct timespec start, struct timespec end);
 // Thread function to trigger page faults
 void *touch_pages(void *arg) {
     thread_data_t *data = (thread_data_t *)arg;
+
+    if (data->use_extents) {
+        if (syscall(SYS_ENABLE_EXTENT) != 0) {
+            perror("Error calling sys_enable_extent!");
+        }
+    }
 
     for (size_t i = data->start_offset; i < data->end_offset; i += SYS_PAGE_SIZE) {
         data->buffer[i] = 'X';
@@ -50,17 +57,10 @@ int main(int argc, char *argv[]) {
 
     arg_check(argc, argv);
 
-    // System call to enable extents for current process.
-    if (strcmp(argv[1], "true") == 0) {
-        if (syscall(SYS_ENABLE_EXTENT) != 0) {
-            perror("Error calling sys_enable_extent!");
-        }
-    }
-
     buffer_size = SYS_PAGE_SIZE * PAGES;
     long pages_per_thread = PAGES / NUM_THREADS;
 
-    printf("PID: %d | Threads: %d\n", pid, NUM_THREADS);
+    printf("PID: %d | Threads: %ld\n", pid, NUM_THREADS);
     printf("Total Pages: %ld\n", PAGES);
     printf("Pages Per Thread: %ld\n", pages_per_thread);
     printf("Total Buffer Size (B): %ld\n", buffer_size);
@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < NUM_THREADS; i++) {
         thread_args[i].buffer = u_buffer;
         thread_args[i].start_offset = i * pages_per_thread * SYS_PAGE_SIZE;
+        thread_args[i].use_extents = (strcmp(argv[1], "true") == 0);
         
         // Handle the last thread's end boundary
         if (i == NUM_THREADS - 1) {
