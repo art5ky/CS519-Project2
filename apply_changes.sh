@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e  # Exit on any error
+set -e
 
 KERNEL_SRC="./linux-5.15.0"   # Kernel source dir
 PATCH_DIR="./patches"          # Patch directory

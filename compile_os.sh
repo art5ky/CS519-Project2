@@ -8,7 +8,7 @@ PROC=$(nproc)
 export CONCURRENCY_LEVEL=$PROC
 export CONCURRENCYLEVEL=$PROC
 
-cd ~/linux-5.15.0
+cd linux-5.15.0/
 
 cp /boot/config-$(uname -r) .config
 make oldconfig
