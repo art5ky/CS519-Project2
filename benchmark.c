@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     pid_t pid = getpid();
     struct timespec t_start, t_end;
     struct rusage u_start, u_end; 
-    long iterations, buffer_size;
+    long buffer_size, minor_faults, major_faults;
     char *u_buffer; 
 
     arg_check(argc, argv);
@@ -61,11 +61,11 @@ int main(int argc, char *argv[]) {
     getrusage(RUSAGE_SELF, &u_end);
     clock_gettime(CLOCK_MONOTONIC, &t_end);
 
-    long minor_faults = u_end.ru_minflt - u_start.ru_minflt;
-    //long major_faults = u_end.ru_majflt - u_start.ru_majflt;
+    minor_faults = u_end.ru_minflt - u_start.ru_minflt;
+    major_faults = u_end.ru_majflt - u_start.ru_majflt;
 
     printf("Minor Page Faults: %ld\n", minor_faults);
-    //printf("Major Page Faults: %ld\n", major_faults);
+    printf("Major Page Faults: %ld\n", major_faults);
     printf("Total time (ms): %f\n", get_total_time_ms(t_start, t_end));
 
     free(u_buffer);
@@ -81,7 +81,7 @@ void arg_check(int argc, char *argv[]) {
         exit(1);
     }
     if (argc != 2) {
-        printf("Insufficient parameters! (Required 2 but provided %d)\n", argc - 1);
+        printf("Insufficient parameters! (Required 1 but provided %d)\n", argc - 1);
         exit(1); 
     }
     if (strcmp(argv[1], "true") != 0 && strcmp(argv[1], "false") != 0) {
