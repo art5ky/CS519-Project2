@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 #sudo apt update; sudo apt-get install -y libdpkg-dev kernel-package libncurses-dev
 
 PROC=`nproc`

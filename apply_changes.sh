@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 set -e
 
@@ -30,7 +30,7 @@ echo "Applying patches from '$PATCH_DIR' to '$KERNEL_SRC'..."
 # Apply patches in sorted order
 for patch in $(ls "$PATCH_DIR"/*."$PATCH_EXT" 2>/dev/null | sort); do
     echo "  Applying: $(basename $patch)"
-    patch -d "$KERNEL_SRC" -p1 --forward < "$patch"
+    patch -d "$KERNEL_SRC" -p1 -N --forward --reject-file=- < "$patch" || echo "  Already applied, skipping..."
 done
 
 echo "All patches applied successfully!"

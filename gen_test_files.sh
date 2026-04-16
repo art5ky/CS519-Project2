@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # File sizes are 4MB, 8MB, 16MB, 32MB, and 64MB. This can be altered.
 FILE_SIZES=(4 8 16 32 64)
