@@ -1,8 +1,7 @@
 **/.vscode/
 build/
-linux_5.15.0-174.184.diff.gz
-linux_5.15.0-174.184.dsc
-linux_5.15.0.orig.tar.gz
+*.dsc
+*.gz
 **/linux-5.15.0/
 **/linux-5.15.0-orig/
 **/test_files/
