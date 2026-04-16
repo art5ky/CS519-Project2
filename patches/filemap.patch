@@ -1,0 +1,28 @@
+--- linux-5.15.0-orig/mm/filemap.c	2026-04-14 19:51:36.000000000 -0600
++++ linux-5.15.0/mm/filemap.c	2026-04-15 17:54:52.760829743 -0600
+@@ -44,6 +44,7 @@
+ #include <linux/page_idle.h>
+ #include <asm/pgalloc.h>
+ #include <asm/tlbflush.h>
++#include <linux/extents.h>
+ #include "internal.h"
+ 
+ #define CREATE_TRACE_POINTS
+@@ -3160,6 +3161,17 @@
+ 		return VM_FAULT_SIGBUS;
+ 	}
+ 
++	/* If file-backed page not in memory, insert into extent table */
++	if (current->extent_enabled) {
++		phys_addr_t phys = page_to_phys(page);
++
++		extent_init_passed(); 
++		extent_table_check_create(current);
++
++		if (current->et)
++			extent_table_insert_page(current->et, phys);
++	}
++
+ 	vmf->page = page;
+ 	return ret | VM_FAULT_LOCKED;
+ 

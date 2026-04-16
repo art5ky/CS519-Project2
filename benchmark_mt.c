@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     printf("Total Pages: %ld\n", PAGES);
     printf("Pages Per Thread: %ld\n", pages_per_thread);
     printf("Total Buffer Size (B): %ld\n", buffer_size);
-    printf("Total Buffer Size (MiB): %f\n", (float) buffer_size / (float) (1024L * 1024L));
+    printf("Total Buffer Size (MiB): %.2f\n", (float) buffer_size / (float) (1024L * 1024L));
 
     clock_gettime(CLOCK_MONOTONIC, &t_start);
     getrusage(RUSAGE_SELF, &u_start);

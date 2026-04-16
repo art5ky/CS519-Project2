@@ -26,10 +26,11 @@ int main(int argc, char *argv[]) {
     pid_t pid = getpid();
     struct timespec t_start, t_end;
     struct rusage u_start, u_end;
+    long minor_faults, major_faults;
+    
     struct stat st;
     long long f_size;
-    long minor_faults, major_faults;
-    const char *map_addr;
+    char *mm_addr;
     int fd;
 
     arg_check(argc, argv);
@@ -46,29 +47,42 @@ int main(int argc, char *argv[]) {
         return 1; 
     }
 
-    f_size = st.st_size; 
+    f_size = st.st_size;
 
-    printf("PID: %d\n", pid);
-    printf("File Size (B): %lld\n", f_size);
-    printf("File Size (MiB): %f\n", (float) f_size / (float) (1024L * 1024L));
-    printf("System Page Size (B): %ld\n", SYS_PAGE_SIZE);
+    mm_addr = mmap(NULL, f_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (mm_addr == MAP_FAILED) {
+        perror("Memory map failed!");
+        close(fd);
+        return 1; 
+    }
+    close(fd);
 
     if (syscall(SYS_ENABLE_EXTENT) != 0) {
         perror("Error calling sys_enable_extent!");
     }
-    
+
     clock_gettime(CLOCK_MONOTONIC, &t_start);
     getrusage(RUSAGE_SELF, &u_start);
 
-
-    // TODO
+    for (size_t mm_offset = 0; mm_offset < f_size; mm_offset += SYS_PAGE_SIZE) {
+        mm_addr[mm_offset] = 'X';
+    }
 
     getrusage(RUSAGE_SELF, &u_end);
     clock_gettime(CLOCK_MONOTONIC, &t_end);
 
+    if (munmap(mm_addr, f_size) == -1) {
+        perror("Failed to deallocate memory map!");
+    }
+
     minor_faults = u_end.ru_minflt - u_start.ru_minflt;
     major_faults = u_end.ru_majflt - u_start.ru_majflt;
 
+    printf("PID: %d\n", pid);
+    printf("Total Pages: %lld\n", f_size / SYS_PAGE_SIZE);
+    printf("System Page Size (B): %ld\n", SYS_PAGE_SIZE);
+    printf("File Size (B): %lld\n", f_size);
+    printf("File Size (MiB): %f\n", (float) f_size / (float) (1024L * 1024L));
     printf("Minor Page Faults: %ld\n", minor_faults);
     printf("Major Page Faults: %ld\n", major_faults);
     printf("Total time (ms): %f\n", get_total_time_ms(t_start, t_end));
@@ -80,7 +94,7 @@ void arg_check(int argc, char *argv[]) {
     if (argc == 1) {
         printf("Usage: %s [FILE_PATH]\n", argv[0]);
         printf("-------------------------------------------------------\n");
-        printf("FILE_PATH - Required relative binary file path.  (e.g. test_files/testfile_4MB.bin)\n");
+        printf("FILE_PATH - Required relative binary file path.  (e.g. test_files/tf_4MB.bin)\n");
         exit(1);
     }
     if (argc != 2) {

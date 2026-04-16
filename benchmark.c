@@ -37,12 +37,6 @@ int main(int argc, char *argv[]) {
 
     buffer_size = SYS_PAGE_SIZE * PAGES;
 
-    printf("PID: %d\n", pid);
-    printf("Total Pages: %ld\n", PAGES);
-    printf("System Page Size (B): %ld\n", SYS_PAGE_SIZE);
-    printf("Total Buffer Size (B): %ld\n", buffer_size);
-    printf("Total Buffer Size (MiB): %f\n", (float) buffer_size / (float) (1024L * 1024L));
-
     clock_gettime(CLOCK_MONOTONIC, &t_start);
     getrusage(RUSAGE_SELF, &u_start);
 
@@ -64,6 +58,11 @@ int main(int argc, char *argv[]) {
     minor_faults = u_end.ru_minflt - u_start.ru_minflt;
     major_faults = u_end.ru_majflt - u_start.ru_majflt;
 
+    printf("PID: %d\n", pid);
+    printf("Total Pages: %ld\n", PAGES);
+    printf("System Page Size (B): %ld\n", SYS_PAGE_SIZE);
+    printf("Total Buffer Size (B): %ld\n", buffer_size);
+    printf("Total Buffer Size (MiB): %f\n", (float) buffer_size / (float) (1024L * 1024L));
     printf("Minor Page Faults: %ld\n", minor_faults);
     printf("Major Page Faults: %ld\n", major_faults);
     printf("Total time (ms): %f\n", get_total_time_ms(t_start, t_end));

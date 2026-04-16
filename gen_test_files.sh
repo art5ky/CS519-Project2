@@ -13,7 +13,7 @@ echo "--- Generating Test Files ---"
 
 for SIZE in "${FILE_SIZES[@]}"
 do
-    FILE_NAME="${TARGET_DIR}/testfile_${SIZE}MB.bin"
+    FILE_NAME="${TARGET_DIR}/tf_${SIZE}MB.bin"
     
     echo "[*] Creating $FILE_NAME ($SIZE MB)..."
     
